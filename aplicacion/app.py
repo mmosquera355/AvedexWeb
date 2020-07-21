@@ -36,7 +36,15 @@ connection = psycopg2.connect(user="postgres",
 '''Definifición de rutas'''
 @app.errorhandler(404)
 def page_not_found(error):
-    return render_template("error.html", error="Página no encontrada..."), 404
+    return render_template("error.html", error="Página no encontrada... te invitamos a ingresar una dirección valida."), 404
+
+@app.route("/")
+def upload_file():
+    return render_template("panelMenu.html")
+
+@app.route('/layoutPanel')
+def layoutPanel():
+    return render_template("panelMenu.html")
 
 @app.route('/layoutlogin')
 def layoutlogin():
@@ -46,6 +54,7 @@ def layoutlogin():
 @app.route('/layoutRegistro')
 def layoutRegistro():
     return render_template("registro.html")
+
 
 
 '''Consultas a la base de datos'''
@@ -79,9 +88,6 @@ def insertData(sentenciaInsert, info, accion):
         if(connection):
             print("Failed to insert record into table", error)
 
-@app.route("/")
-def upload_file():
-    return render_template("panelMenu.html")
 
 @app.route('/registro',  methods=['POST'])
 def registro():
@@ -127,7 +133,7 @@ def login():
     return render_template("login.html")
 
 
-'''Tabla de usuarios'''
+'''Tabla de usuarios y login'''
 
 @app.route('/usuarios', methods=['GET','POST'])
 def usuarios():
@@ -156,6 +162,9 @@ def usuarios():
                 sql_update_query = """Update usuario set nombre = %s, email = %s, codigo_especialidad= %s where codigo = %s"""
                 record_to_update = (username, email, especialidad,id)
                 insertData(sql_update_query,record_to_update, valorUno)
+                sql_update_query = """Update login set email = %s, codigo_especialidad= %s where email = %s"""
+                record_to_update = (email, especialidad,email)
+                insertData(sql_update_query,record_to_update, valorUno)
 
             else:
                 print("insertaremos")
@@ -169,26 +178,153 @@ def usuarios():
             print(valor)
             sql_delete_query = """Delete from usuario where codigo = %s"""
             record_to_delete = (codigo,)
-            insertData(sql_delete_query,record_to_delete, valor)  
+            insertData(sql_delete_query,record_to_delete, valor) 
         
         #realizando de nuevo las consultas
         usuarios = getAllData('select * from usuario ORDER BY codigo')
         especialidades =  getAllData('select * from especialidad')
     return render_template("usuarios.html", usuarios = usuarios, especialidades = especialidades )
 
-@app.route('/eliminarUsuario', methods=['GET','POST'])
-def eliminarUsuario():
+''' tabla de misiones '''
+
+@app.route('/misiones', methods=['GET','POST'])
+def misiones():
+
+    misiones = getAllData('select * from mision ORDER BY codigo')
+
     if request.method == 'POST':
-        print("entrando a eliminar usuario")
-        codigo = request.form.get("idusrEl")
+        id = request.form.get("idmis")
+        print(id)
+        titulo = request.form.get("nombre")
+        print(titulo)
+        descripcion = request.form.get("descripcion")
+        print(descripcion)
+        puntos = request.form.get("puntos")
+        print(puntos)
+        codigo = request.form.get("idmisEl")
         print(codigo)
         valor = request.form.get("valor")
+        valorUno = request.form.get("valorUno")
         print(valor)
-        #sql_delete_query = """Delete from usuario where codigo = %s"""
-        #record_to_delete = (id)
-        #insertData(sql_delete_query,record_to_delete)
-        usuarios = getAllData('select * from usuario ORDER BY codigo')
-        especialidades =  getAllData('select * from especialidad')
-    return render_template("usuarios.html", usuarios = usuarios, especialidades = especialidades )
+        if(valor is None):
+            if(id!=''):
+                print("actualizaremos")
+                sql_update_query = """Update mision set nombre = %s, descripcion = %s, puntos= %s where codigo = %s"""
+                record_to_update = (titulo, descripcion, puntos,id)
+                insertData(sql_update_query,record_to_update, valorUno)
+
+            else:
+                print("insertaremos")
+                postgres_insert_query = """ INSERT INTO mision (nombre, descripcion, puntos) VALUES (%s,%s,%s)"""
+                record_to_insert = (titulo, descripcion, puntos)
+                insertData(postgres_insert_query,record_to_insert, valorUno)
+        else:
+            print(valor)
+            sql_delete_query = """Delete from mision where codigo = %s"""
+            record_to_delete = (codigo,)
+            insertData(sql_delete_query,record_to_delete, valor) 
+        
+        #realizando de nuevo las consultas
+        misiones = getAllData('select * from mision ORDER BY codigo')
+    return render_template("misiones.html", misiones = misiones)
 
 
+'''tabla de aves y familia'''
+
+@app.route('/aves', methods=['GET','POST'])
+def aves():
+
+    aves = getAllData('select * from ave ORDER BY codigo')
+    familias = getAllData('select * from familia ORDER BY codigo')
+
+    if request.method == 'POST':
+        id = request.form.get("idmave")
+        print(id)
+        nomCo = request.form.get("nomCo")
+        print(nomCo)
+        nomCi = request.form.get("nomCi")
+        print(nomCi)
+        genero = request.form.get("genero")
+        print(genero)
+        especie = request.form.get("especie")
+        print(especie)
+        descripcion = request.form.get("descripcion")
+        print(descripcion)
+        orden = request.form.get("orden")
+        print(orden)
+        colores = request.form.get("colores")
+        print(colores)
+        idFamiliaAve = request.form.get("idFamiliaAve")
+        print(idFamiliaAve)
+        codigo = request.form.get("idaveEl")
+        print(codigo)
+        valor = request.form.get("valor")
+        valorUno = request.form.get("valorUno")
+        print(valor)
+        if(valor is None):
+            if(id!=''):
+                print("actualizaremos")
+                sql_update_query = """Update ave set nombre_comun = %s, nombre_cientifico = %s, genero= %s,
+                especie = %s, descripcion = %s, orden= %s,
+                colores_principales = %s, codigo_familia = %s where codigo = %s"""
+                record_to_update = (nomCo, nomCi, genero,especie,descripcion,orden,colores,idFamiliaAve,id)
+                insertData(sql_update_query,record_to_update, valorUno)
+
+            else:
+                print("insertaremos")
+                postgres_insert_query = """ INSERT INTO ave (nombre_comun, nombre_cientifico, genero,
+                especie,descripcion,orden,colores_principales,codigo_familia) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"""
+                record_to_insert = (nomCo, nomCi, genero,especie,descripcion,orden,colores,idFamiliaAve)
+                insertData(postgres_insert_query,record_to_insert, valorUno)
+        else:
+            print(valor)
+            sql_delete_query = """Delete from ave where codigo = %s"""
+            record_to_delete = (codigo,)
+            insertData(sql_delete_query,record_to_delete, valor) 
+        
+        #realizando de nuevo las consultas
+        aves = getAllData('select * from ave ORDER BY codigo')
+        familias = getAllData('select * from familia ORDER BY codigo')
+    return render_template("aves.html", aves = aves, familias=familias)
+
+@app.route('/familia', methods=['GET','POST'])
+def familia():
+
+    aves = getAllData('select * from ave ORDER BY codigo')
+    familias = getAllData('select * from familia ORDER BY codigo')
+
+
+    if request.method == 'POST':
+        id = request.form.get("idfami")
+        print(id)
+        nombre = request.form.get("nombre")
+        print(nombre)
+        descripcion = request.form.get("descripcion")
+        print(descripcion)
+        codigo = request.form.get("idfamiEl")
+        print(codigo)
+        valor = request.form.get("valor")
+        valorUno = request.form.get("valorUno")
+        print(valor)
+        if(valor is None):
+            if(id!=''):
+                print("actualizaremos")
+                sql_update_query = """Update familia set nombre = %s, descripcion = %s where codigo = %s"""
+                record_to_update = (nombre, descripcion, id)
+                insertData(sql_update_query,record_to_update, valorUno)
+
+            else:
+                print("insertaremos")
+                postgres_insert_query = """ INSERT INTO familia (nombre, descripcion) VALUES (%s,%s)"""
+                record_to_insert = (nombre, descripcion)
+                insertData(postgres_insert_query,record_to_insert, valorUno)
+        else:
+            print(valor)
+            sql_delete_query = """Delete from familia where codigo = %s"""
+            record_to_delete = (codigo,)
+            insertData(sql_delete_query,record_to_delete, valor) 
+        
+        #realizando de nuevo las consultas
+    aves = getAllData('select * from ave ORDER BY codigo')
+    familias = getAllData('select * from familia ORDER BY codigo')
+    return render_template("aves.html", aves = aves, familias=familias)
