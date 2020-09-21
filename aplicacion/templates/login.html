@@ -1,5 +1,10 @@
 {% extends "material/base.html" %} 
 {% block content %}
+<head>
+    {{ toastr.include_jquery() }}
+    {{ toastr.include_toastr_css() }}
+    {{ toastr.message() }}
+</head>
 <style>
     .login-page{
         margin-top:100px;
@@ -18,8 +23,8 @@ style="background-repeat: no-repeat; background-size: cover; background-attachme
         <div class="container">
             <a href="#!" class="brand-logo">AveDex</a>
             <ul class="right hide-on-med-and-down">
-                <li><a href="../Registro/registro.php">Registro</a></li>
-                <li><a href="../Inicio/">Inicio</a></li>
+                <li><a href="{{url_for('registro')}}">Registro</a></li>
+                <li><a href="{{url_for('index')}}">Inicio</a></li>
                 <!-- Dropdown Trigger -->
             </ul>
         </div>
@@ -41,14 +46,14 @@ style="background-repeat: no-repeat; background-size: cover; background-attachme
             <div class="row margin">
                 <div class="input-field col s12">
                     <i class="mdi-social-person-outline prefix"></i>
-                    <input id="username" type="text" name="user" />
+                    <input id="username" type="text" name="username" />
                     <label for="username" class="center-align">Username</label>
                 </div>
             </div>
             <div class="row margin">
                 <div class="input-field col s12">
                     <i class="mdi-action-lock-outline prefix"></i>
-                    <input id="password" type="password" name="pass" />
+                    <input id="password" type="password" name="password" />
                     <label for="password">Password</label>
                 </div>
             </div>
@@ -68,17 +73,18 @@ style="background-repeat: no-repeat; background-size: cover; background-attachme
             <div class="row">
                 <div class="input-field col s6 m6 l6">
                     <p class="margin medium-small">
-                        <a href="page-register.html">Register Now!</a>
+                        <a href="{{url_for('registro')}}">Registrate ahora!</a>
                     </p>
                 </div>
                 <div class="input-field col s6 m6 l6">
                     <p class="margin right-align medium-small">
-                        <a href="page-forgot-password.html">Forgot password ?</a>
+                        <a href="page-forgot-password.html">Olvidaste la contraseña ?</a>
                     </p>
                 </div>
             </div>
         </form>
     </div>
 </div>
+{{ toastr.include_toastr_js() }}
 
 {% endblock %}

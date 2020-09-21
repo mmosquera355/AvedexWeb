@@ -10,18 +10,36 @@
 # Library imports
 import os
 import zipfile
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request,redirect, url_for, request, abort,\
+    session,jsonify
 from flask import send_file
 from flask import flash
+from datetime import datetime
 from flask_material import Material
 import psycopg2
+import numpy as np
 from flask_toastr import Toastr
+from flask_login import LoginManager
+from base64 import b64encode
+from werkzeug.urls import url_parse
+from flask_googlecharts import GoogleCharts
+from flask_googlecharts import BarChart
+from keras.models import load_model
+from matplotlib.image import imread
+from keras.preprocessing import image
+from keras.applications.resnet50 import preprocess_input
+from werkzeug.utils import secure_filename
+
+
 
 app = Flask(__name__)
 Material(app)
 toastr = Toastr(app)
 toastr.init_app(app)
+charts = GoogleCharts(app)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+
+
 
 #conexion con la bd
 connection = psycopg2.connect(user="postgres",
@@ -38,9 +56,14 @@ connection = psycopg2.connect(user="postgres",
 def page_not_found(error):
     return render_template("error.html", error="Página no encontrada... te invitamos a ingresar una dirección valida."), 404
 
+@app.route("/index")
+def index():
+    return render_template("index.html")
+
+
 @app.route("/")
 def upload_file():
-    return render_template("panelMenu.html")
+    return render_template("index.html")
 
 @app.route('/layoutPanel')
 def layoutPanel():
@@ -69,6 +92,28 @@ def getAllData(sentencia):
         print ("Error while fetching data from PostgreSQL", error)
     return datos
 
+def getAllDataParameter(sentencia, info):
+    try:
+        cursor = connection.cursor()
+        postgreSQL_select_Query = sentencia
+        cursor.execute(postgreSQL_select_Query, info)
+        datos = cursor.fetchall()  
+        cursor.close()
+    except (Exception, psycopg2.Error) as error :
+        print ("Error while fetching data from PostgreSQL", error)
+    return datos
+
+def getOneData(sentencia, info):
+    try:
+        cursor = connection.cursor()
+        postgreSQL_select_Query = sentencia
+        cursor.execute(postgreSQL_select_Query,info)
+        dato = cursor.fetchone()  
+        cursor.close()
+    except (Exception, psycopg2.Error) as error :
+        print ("Error while fetching data from PostgreSQL", error)
+    return dato
+
 def insertData(sentenciaInsert, info, accion):
     try:
         cursor = connection.cursor()
@@ -91,46 +136,51 @@ def insertData(sentenciaInsert, info, accion):
 
 @app.route('/registro',  methods=['POST'])
 def registro():
-    email = request.form.get("user")
-    print(email)
-    password = request.form.get("pass")
-    print(password)
-    print( "'{0}'".format(password))
-    try:
-        cursor = connection.cursor()
-        postgres_insert_query = """ INSERT INTO login (codigo, email, password, codigo_especialidad) VALUES (%s,%s,%s,%s)"""
-        record_to_insert = (1, email, password,1)
-        cursor.execute(postgres_insert_query, record_to_insert)
-        connection.commit()
-        count = cursor.rowcount
-        print (count, "Record inserted successfully into login table")
-    except (Exception, psycopg2.Error) as error :
-        if(connection):
-            print("Failed to insert record into table", error)
+    if request.method == 'POST' and 'username' in request.form and 'useremail' in request.form and 'pass' in request.form:
+        unsername = request.form.get("username")
+        print(unsername)
+        email = request.form.get("useremail")
+        print(email)
+        password = request.form.get("pass")
+        valorUno="insertar"
+        postgres_insert_query = """ INSERT INTO usuario (nombre, email, codigo_especialidad) VALUES (%s,%s,%s)"""
+        record_to_insert = (unsername, email, 3)
+        insertData(postgres_insert_query,record_to_insert, valorUno)
+        postgres_insert_query = """ INSERT INTO login (email, password, codigo_especialidad) VALUES (%s,%s,%s)"""
+        record_to_insert = (email, password, 3) 
+        insertData(postgres_insert_query,record_to_insert, valorUno)
+        session['loggedin'] = True
+        session['username'] = unsername
+        return render_template("perfil.html")
+
 
     return render_template("registro.html")
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['get', 'post'])
 def login():
-    email = request.form.get("user")
-    print(email)
-    password = request.form.get("pass")
-    print(password)
-    print( "'{0}'".format(password))
-    try:
-        cursor = connection.cursor()
-        postgres_insert_query = """ INSERT INTO login (codigo, email, password, codigo_especialidad) VALUES (%s,%s,%s,%s)"""
-        record_to_insert = (1, email, password,1)
-        cursor.execute(postgres_insert_query, record_to_insert)
-        connection.commit()
-        count = cursor.rowcount
-        print (count, "Record inserted successfully into login table")
-    except (Exception, psycopg2.Error) as error :
-        if(connection):
-            print("Failed to insert record into table", error)
+    if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
+        # Create variables for easy access
+        username = request.form['username']
+        password = request.form['password']
+        sentencia=  """SELECT * FROM login WHERE email = %s AND password = %s """
+        record_to_select = (username, password,)
 
-    return render_template("login.html")
+        account = getOneData(sentencia,record_to_select )
+        if account:
+            # Create session data, we can access this data in other routes
+            session['loggedin'] = True
+            session['id'] = account[0]
+            session['username'] = account[1]
+            if (account[3]==1):
+                return render_template('panelMenu.html')
+            else:
+                return redirect(url_for('perfil'))
+        else:
+            # Account doesnt exist or username/password incorrect
+            flash("Datos incorrectos")
+            #msg = 'Incorrect username/password!'
+    return render_template('login.html')
 
 
 '''Tabla de usuarios y login'''
@@ -285,13 +335,24 @@ def aves():
         #realizando de nuevo las consultas
         aves = getAllData('select * from ave ORDER BY codigo')
         familias = getAllData('select * from familia ORDER BY codigo')
-    return render_template("aves.html", aves = aves, familias=familias)
+    imagenes = getAllData('select * from foto ORDER BY codigo')
+    nrows = []
+    for a,b,c,d in imagenes:
+        nrow = tuple([a, b64encode(b).decode("utf-8"),c,d])
+        nrows.append(nrow)
+    return render_template("aves.html", aves = aves, familias=familias, imagenes=nrows)
 
 @app.route('/familia', methods=['GET','POST'])
 def familia():
 
     aves = getAllData('select * from ave ORDER BY codigo')
     familias = getAllData('select * from familia ORDER BY codigo')
+    imagenes = getAllData('select * from foto ORDER BY codigo')
+
+    nrows = []
+    for a,b,c,d in imagenes:
+        nrow = tuple([a, b64encode(b).decode("utf-8"),c,d])
+        nrows.append(nrow)
 
 
     if request.method == 'POST':
@@ -327,4 +388,200 @@ def familia():
         #realizando de nuevo las consultas
     aves = getAllData('select * from ave ORDER BY codigo')
     familias = getAllData('select * from familia ORDER BY codigo')
-    return render_template("aves.html", aves = aves, familias=familias)
+    imagenes = getAllData('select * from foto ORDER BY codigo')
+
+    for a,b,c,d in imagenes:
+        nrow = tuple([a, b64encode(b).decode("utf-8"),c,d])
+        nrows.append(nrow)
+    return render_template("aves.html", aves = aves, familias=familias, imagenes=nrows)
+
+'''imagenes'''
+def convertToBinaryData(file):
+    #Convert digital data to binary format
+    blobData = file.read()
+    return blobData
+
+def write_file(data, filename):
+    # Convert binary data to proper format and write it on Hard Disk
+    with open(filename, 'wb') as file:
+        file.write(data)
+
+@app.route('/imagen', methods = ['GET', 'POST'])
+def imagen():
+    aves = getAllData('select * from ave ORDER BY codigo')
+    familias = getAllData('select * from familia ORDER BY codigo')
+    imagenes = getAllData('select * from foto ORDER BY codigo')
+
+    nrows = []
+    for a,b,c,d in imagenes:
+        nrow = tuple([a, b64encode(b).decode("utf-8"),c,d])
+        nrows.append(nrow)
+
+    #Comprehension lists python.
+
+    if request.method == 'POST':
+        
+        valor = request.form.get("valor")
+        print(valor)
+        valorUno = request.form.get("valorUno")            
+        codigo = request.form.get("idimgEl")
+        
+        print(codigo)
+        #f.save(secure_filename(f.filename))
+        if(valor is None):
+            id = request.form.get("idimg")
+            print(id)
+            descripcion = request.form.get("desimg")
+            print(descripcion)
+            idave = request.form.get("idAveimg")
+            f = request.files['file']
+            empPhoto = convertToBinaryData(f)
+            print(idave)
+            if(id!=''):
+                print("actualizaremos")
+                sql_update_query = """Update foto set photo = %s, descripcion = %s, codigo_ave = %s where codigo = %s"""
+                record_to_update = (empPhoto, descripcion, idave, id)
+                insertData(sql_update_query,record_to_update, valorUno)
+
+            else:
+                print("insertaremos")
+                postgres_insert_query = """ INSERT INTO foto (photo, descripcion,codigo_ave) VALUES (%s,%s,%s)"""
+                record_to_insert = (empPhoto, descripcion,idave)
+                insertData(postgres_insert_query,record_to_insert, valorUno)
+        else:
+            print("eliminaremos")
+
+            print(valor)
+            sql_delete_query = """Delete from foto where codigo = %s"""
+            record_to_delete = (codigo,)
+            insertData(sql_delete_query,record_to_delete, valor) 
+        
+        #realizando de nuevo las consultas
+    aves = getAllData('select * from ave ORDER BY codigo')
+    familias = getAllData('select * from familia ORDER BY codigo')
+    imagenes = getAllData('select * from foto ORDER BY codigo')
+
+    nrows = []
+    for a,b,c,d in imagenes:
+        nrow = tuple([a, b64encode(b).decode("utf-8"),c,d])
+        nrows.append(nrow)
+    return render_template("aves.html", aves = aves, familias=familias, imagenes=nrows)
+
+
+'''Prueba beta de predicciones del modelo'''
+@app.route("/perfil")
+def perfil():
+    print("hola soy maria")
+    sentencia=  """SELECT * FROM ave WHERE codigo = %s """
+    codigo=8
+    record_to_select = (codigo,)
+    ave = getOneData(sentencia,record_to_select )
+
+    if ave:
+        codigo_familia= ave[8]
+        nombreCientificoAve= ave[2]
+
+    sentenciaFamilia=  """SELECT * FROM familia WHERE codigo = %s """
+    record_to_selectFamilia = (codigo_familia,)
+    familia = getOneData(sentenciaFamilia,record_to_selectFamilia )
+    sentenciaImagen=  """SELECT * FROM foto WHERE codigo_Ave = %s """
+    record_to_selectImagen = (codigo,)
+    imagenes = getAllDataParameter(sentenciaImagen,record_to_selectImagen )
+    nrows = []
+    for a,b,c,d in imagenes:
+        nrow = tuple([a, b64encode(b).decode("utf-8"),c,d])
+        nrows.append(nrow)
+    return render_template("perfil.html", ave=ave, familia=familia, imagenes= nrows, nombre= nombreCientificoAve)
+
+UPLOAD_FOLDER = 'aplicacion\static\imagenes'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+@app.route('/clasificar', methods = ['GET', 'POST'])
+def clasificar():
+    model = load_model('aplicacion\static\modelResnet50Epoch100Step15.h5')
+    classes=('Amazilia_tzacatl','Brotogeris_jugularis','Buteo_magnirostris','Columbina_talpacoti',
+        'Coragyps_atratus','Melanerpes_rubricapillus','Pitangus_sulphuratus','Tiaris_bicolor','Tyrannus_melancholicus')
+    id_classes=(8,12,10,4,9,11,7,5,6)
+
+
+    if request.method == 'POST':
+        f = request.files['file']
+        filename = secure_filename(f.filename)
+        f.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        direc= "aplicacion/static/imagenes/"+ filename
+        print(direc)
+        print(type(direc))
+        img = image.load_img(direc, target_size=(224, 224))
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)
+        x = preprocess_input(x)
+        prediccion= model.predict(x)
+        predicted_class_indices = np.argmax(prediccion, axis = 1)
+        print(predicted_class_indices)
+        print(classes[predicted_class_indices[0]])
+        sentencia=  """SELECT * FROM ave WHERE codigo = %s """
+        codigo=id_classes[predicted_class_indices[0]]
+        record_to_select = (codigo,)
+        ave = getOneData(sentencia,record_to_select )
+
+        if ave:
+            codigo_familia= ave[8]
+            nombreCientificoAve= ave[2]
+
+        sentenciaFamilia=  """SELECT * FROM familia WHERE codigo = %s """
+        record_to_selectFamilia = (codigo_familia,)
+        familia = getOneData(sentenciaFamilia,record_to_selectFamilia )
+        sentenciaImagen=  """SELECT * FROM foto WHERE codigo_Ave = %s """
+        record_to_selectImagen = (codigo,)
+        imagenes = getAllDataParameter(sentenciaImagen,record_to_selectImagen )
+        nrows = []
+        for a,b,c,d in imagenes:
+            nrow = tuple([a, b64encode(b).decode("utf-8"),c,d])
+            nrows.append(nrow)
+
+    return render_template("perfil.html", ave=ave, familia=familia, imagenes= nrows, nombre= nombreCientificoAve)
+
+
+'''Prueba beta de predicciones del modelo desde la app'''
+@app.route('/clasificarapp', methods = ['GET', 'POST'])
+def clasificarapp():
+    model = load_model('aplicacion\static\modelResnet50Epoch100Step15.h5')
+    classes=('Amazilia_tzacatl','Brotogeris_jugularis','Buteo_magnirostris','Columbina_talpacoti',
+        'Coragyps_atratus','Melanerpes_rubricapillus','Pitangus_sulphuratus','Tiaris_bicolor','Tyrannus_melancholicus')
+    id_classes=(8,12,10,4,9,11,7,5,6)
+
+
+    if request.method == 'POST':
+        idUsuario = request.form.get("idUser")
+        print(idUsuario)
+        f = request.files['file']
+        filename = secure_filename(f.filename)
+        f.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        direc= "aplicacion/static/imagenes/"+ filename
+        print(direc)
+        print(type(direc))
+        img = image.load_img(direc, target_size=(224, 224))
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)
+        x = preprocess_input(x)
+        prediccion= model.predict(x)
+        predicted_class_indices = np.argmax(prediccion, axis = 1)
+        print("soy angelica")
+        print(predicted_class_indices)
+        print("holaa")
+        print(type(predicted_class_indices))
+        print(classes[predicted_class_indices[0]])
+        codigo=id_classes[predicted_class_indices[0]]
+        print(type(codigo))
+        print(codigo)
+        #insertando la predicción con el usuario
+        postgres_insert_query = """ INSERT INTO usuario_ave_ubicacion(codigo_ave,codigo_ubicacion,codigo_usuario,fecha_hora_identificacion,observacion) VALUES (%s,%s,%s,%s,%s)"""
+        record_to_insert = (codigo,1 ,idUsuario,datetime.now(), "Primera prueba")
+        insertData(postgres_insert_query,record_to_insert, "insertar")
+    respuesta= jsonify({"status":"success","prediction":codigo,"confidence":classes[predicted_class_indices[0]],"upload_time":datetime.now()})
+    print(respuesta)
+    return jsonify({
+                "status":"success",
+                "prediction":codigo,
+                "confidence":classes[predicted_class_indices[0]],
+                "upload_time":datetime.now()
+                })
