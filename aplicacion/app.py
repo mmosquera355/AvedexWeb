@@ -29,7 +29,7 @@ from matplotlib.image import imread
 from keras.preprocessing import image
 from keras.applications.resnet50 import preprocess_input
 from werkzeug.utils import secure_filename
-
+import re
 
 
 app = Flask(__name__)
@@ -140,6 +140,26 @@ def registro():
         unsername = request.form.get("username")
         print(unsername)
         email = request.form.get("useremail")
+        #valid Email
+        #definición de la expresión regular
+        '''regex = '^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
+        if(re.search(regex,email)):  
+            password = request.form.get("pass")
+            valorUno="insertar"
+            postgres_insert_query = """ INSERT INTO usuario (nombre, email, codigo_especialidad) VALUES (%s,%s,%s)"""
+            record_to_insert = (unsername, email, 3)
+            insertData(postgres_insert_query,record_to_insert, valorUno)
+            postgres_insert_query = """ INSERT INTO login (email, password, codigo_especialidad) VALUES (%s,%s,%s)"""
+            record_to_insert = (email, password, 3) 
+            insertData(postgres_insert_query,record_to_insert, valorUno)
+            session['loggedin'] = True
+            session['username'] = unsername
+            return render_template("perfil.html")
+        else:
+            flash("Ingrese un email correcto")
+
+        return render_template('registro.html')'''
+        print("Valid Email")  
         print(email)
         password = request.form.get("pass")
         valorUno="insertar"
@@ -152,8 +172,6 @@ def registro():
         session['loggedin'] = True
         session['username'] = unsername
         return render_template("perfil.html")
-
-
     return render_template("registro.html")
 
 
@@ -457,6 +475,7 @@ def imagen():
             insertData(sql_delete_query,record_to_delete, valor) 
         
         #realizando de nuevo las consultas
+    #data = getAllData('SELECT * FROM ave INNER JOIN familia ON familia.codigo = ave.codigo_familia ORDER BY ave.codigo')
     aves = getAllData('select * from ave ORDER BY codigo')
     familias = getAllData('select * from familia ORDER BY codigo')
     imagenes = getAllData('select * from foto ORDER BY codigo')
@@ -465,6 +484,7 @@ def imagen():
     for a,b,c,d in imagenes:
         nrow = tuple([a, b64encode(b).decode("utf-8"),c,d])
         nrows.append(nrow)
+    
     return render_template("aves.html", aves = aves, familias=familias, imagenes=nrows)
 
 
@@ -540,6 +560,32 @@ def clasificar():
 
     return render_template("perfil.html", ave=ave, familia=familia, imagenes= nrows, nombre= nombreCientificoAve)
 
+'''@app.route('/clasificarappBD', methods = ['GET', 'POST'])
+def clasificarappBD():
+    postgres_insert_query = """ INSERT INTO usuario_ave_ubicacion(codigo_ave,codigo_ubicacion,codigo_usuario,fecha_hora_identificacion,observacion) VALUES (%s,%s,%s,%s,%s)"""
+    record_to_insert = (8,2 ,34,datetime.now(), "Primera prueba")
+    insertData(postgres_insert_query,record_to_insert, "insertar")
+
+    postgres_insert_query = """ INSERT INTO usuario_ave_ubicacion(codigo_ave,codigo_ubicacion,codigo_usuario,fecha_hora_identificacion,observacion) VALUES (%s,%s,%s,%s,%s)"""
+    record_to_insert = (4,3 ,34,datetime.now(), "Primera prueba")
+    insertData(postgres_insert_query,record_to_insert, "insertar")
+
+    postgres_insert_query = """ INSERT INTO usuario_ave_ubicacion(codigo_ave,codigo_ubicacion,codigo_usuario,fecha_hora_identificacion,observacion) VALUES (%s,%s,%s,%s,%s)"""
+    record_to_insert = (5,4 ,34,datetime.now(), "Primera prueba")
+    insertData(postgres_insert_query,record_to_insert, "insertar")
+    
+    postgres_insert_query = """ INSERT INTO usuario_ave_ubicacion(codigo_ave,codigo_ubicacion,codigo_usuario,fecha_hora_identificacion,observacion) VALUES (%s,%s,%s,%s,%s)"""
+    record_to_insert = (6,5 ,34,datetime.now(), "Primera prueba")
+    insertData(postgres_insert_query,record_to_insert, "insertar")
+
+    postgres_insert_query = """ INSERT INTO usuario_ave_ubicacion(codigo_ave,codigo_ubicacion,codigo_usuario,fecha_hora_identificacion,observacion) VALUES (%s,%s,%s,%s,%s)"""
+    record_to_insert = (7,6 ,34,datetime.now(), "Primera prueba")
+    insertData(postgres_insert_query,record_to_insert, "insertar")'''
+
+
+
+
+
 
 '''Prueba beta de predicciones del modelo desde la app'''
 @app.route('/clasificarapp', methods = ['GET', 'POST'])
@@ -552,6 +598,10 @@ def clasificarapp():
 
     if request.method == 'POST':
         idUsuario = request.form.get("idUser")
+        latitud = request.form.get("latitud")
+        logitud = request.form.get("longitud")
+        print(latitud)
+        print(logitud)
         print(idUsuario)
         f = request.files['file']
         filename = secure_filename(f.filename)
