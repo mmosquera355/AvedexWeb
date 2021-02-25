@@ -1,5 +1,4 @@
 {% extends "material/base.html" %} {% block content %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <link
     href="https://fonts.googleapis.com/icon?family=Material+Icons"
     rel="stylesheet"
@@ -17,6 +16,7 @@
     href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
 />
 <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+
 
 
 <style>
@@ -72,8 +72,7 @@
         <div class="divider"></div>
 
         <h4 class="black-text light">Bienvenido</h4>
-        <h5 class="black-text light">Maria Mosquera</h5>
-        <h7 class="black-text light">mmosquera355@unab.edu.co</h7>
+        <h7 class="black-text light">{{session['username']}}</h7>
 
         <div class="collection #f1f8e9 light-green lighten-5">
             <a href="#!" class="collection-item #f1f8e9 light-green lighten-5"
@@ -232,11 +231,12 @@
         var elementodos = document.querySelectorAll(".carousel");
         var instancesDos = M.Carousel.init(elementodos);
         var elem = document.querySelector('.grid');
-        var msnry = new Masonry( elem, {
+        /*var msnry = new Masonry( elem, {
         // options
             itemSelector: '.grid-item',
             columnWidth: 200
-        });
+        });*/
     });
 </script>
+
 {% endblock %}

@@ -36,8 +36,8 @@
 <ul id="slide-out" class="sidenav">
     <li><div class="user-view">
         <a href="#user"><img class="circle" src="{{ url_for('static', filename='Avedex.png')}}"></a>
-        <a href="#name"><span class="black-text name">Maria Mosquera</span></a>
-        <a href="#email"><span class="black-text email">mmosquera355@unab.edu.co</span></a>
+        <a href="#name"><span class="black-text name">Bienvenido</span></a>
+        <a href="#email"><span class="black-text email">{{session['username']}}</span></a>
     </div></li>
     <li><a href="{{url_for('layoutPanel')}}"><i class="material-icons">arrow_back</i>Panel de control</a></li>
     <li><div class="divider"></div></li>

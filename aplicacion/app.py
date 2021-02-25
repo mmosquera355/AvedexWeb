@@ -42,11 +42,17 @@ app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
 
 #conexion con la bd
-connection = psycopg2.connect(user="postgres",
+'''connection = psycopg2.connect(user="postgres",
                                 password="1234",
                                 host="127.0.0.1",
                                 port="5432",
-                                database="pAvedex")
+                                database="pAvedex")'''
+                
+connection = psycopg2.connect(user="ufwllvzjcevwyu",
+                                password="426dfefe8a08febe9c56d3b4fdab4c2956be05daa3a647d124304a60e730c6c7",
+                                host="ec2-35-174-118-71.compute-1.amazonaws.com",
+                                port="5432",
+                                database="da6rsdbd1l724g")
 #DB_URI = "postgresql+psycopg2://{username}:{password}@{hostname}/{databasename}".format(username="postgres", password="1234", hostname="localhost", databasename="avedex")
 #app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
 #app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -181,6 +187,7 @@ def login():
         # Create variables for easy access
         username = request.form['username']
         password = request.form['password']
+        print(username)
         sentencia=  """SELECT * FROM login WHERE email = %s AND password = %s """
         record_to_select = (username, password,)
 
@@ -221,6 +228,8 @@ def usuarios():
         especialidad = request.form.get('especialidad')
         codigo = request.form.get("idusrEl")
         print(codigo)
+        emailEl = request.form.get("emailEl")
+        print(emailEl)
         valor = request.form.get("valor")
         valorUno = request.form.get("valorUno")
         print(valor)
@@ -247,6 +256,10 @@ def usuarios():
             sql_delete_query = """Delete from usuario where codigo = %s"""
             record_to_delete = (codigo,)
             insertData(sql_delete_query,record_to_delete, valor) 
+            print(email)
+            sql_delete_query_login = """Delete from login where email = %s"""
+            record_to_delete_login = (emailEl,)
+            insertData(sql_delete_query_login,record_to_delete_login, valor) 
         
         #realizando de nuevo las consultas
         usuarios = getAllData('select * from usuario ORDER BY codigo')
@@ -493,7 +506,7 @@ def imagen():
 def perfil():
     print("hola soy maria")
     sentencia=  """SELECT * FROM ave WHERE codigo = %s """
-    codigo=8
+    codigo=1
     record_to_select = (codigo,)
     ave = getOneData(sentencia,record_to_select )
 
@@ -593,7 +606,7 @@ def clasificarapp():
     model = load_model('aplicacion\static\modelResnet50Epoch100Step15.h5')
     classes=('Amazilia_tzacatl','Brotogeris_jugularis','Buteo_magnirostris','Columbina_talpacoti',
         'Coragyps_atratus','Melanerpes_rubricapillus','Pitangus_sulphuratus','Tiaris_bicolor','Tyrannus_melancholicus')
-    id_classes=(8,12,10,4,9,11,7,5,6)
+    id_classes=(5,9,7,1,6,8,4,2,3)
 
 
     if request.method == 'POST':
@@ -623,9 +636,19 @@ def clasificarapp():
         codigo=id_classes[predicted_class_indices[0]]
         print(type(codigo))
         print(codigo)
+        #insertando la ubicación
+        postgres_insert_query = """ INSERT INTO ubicacion(latitud,longitud,descripcion) VALUES (%s,%s,%s)"""
+        record_to_insert = (latitud,logitud ,"Prueba desde sistema web")
+        insertData(postgres_insert_query,record_to_insert, "insertar")
+
+        #obteniendo el id de la ubicación insertada
+        sentenciaUbicacion=  """SELECT MAX(codigo) FROM ubicacion"""
+        ubicacion = getAllData(sentenciaUbicacion )
+        print(type(ubicacion))
+        print(ubicacion[0][0])
         #insertando la predicción con el usuario
         postgres_insert_query = """ INSERT INTO usuario_ave_ubicacion(codigo_ave,codigo_ubicacion,codigo_usuario,fecha_hora_identificacion,observacion) VALUES (%s,%s,%s,%s,%s)"""
-        record_to_insert = (codigo,1 ,idUsuario,datetime.now(), "Primera prueba")
+        record_to_insert = (codigo,ubicacion[0][0] ,idUsuario,datetime.now(), "Prueba desde sistema web")
         insertData(postgres_insert_query,record_to_insert, "insertar")
     respuesta= jsonify({"status":"success","prediction":codigo,"confidence":classes[predicted_class_indices[0]],"upload_time":datetime.now()})
     print(respuesta)

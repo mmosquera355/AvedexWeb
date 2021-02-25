@@ -36,14 +36,14 @@
 <ul id="slide-out" class="sidenav">
     <li><div class="user-view">
         <a href="#user"><img class="circle" src="{{ url_for('static', filename='Avedex.png')}}"></a>
-        <a href="#name"><span class="black-text name">Maria Mosquera</span></a>
-        <a href="#email"><span class="black-text email">mmosquera355@unab.edu.co</span></a>
+        <a href="#name"><span class="black-text name">Bienvenido</span></a>
+        <a href="#email"><span class="black-text email">{{session['username']}}</span></a>
     </div></li>
     <li><a href="{{url_for('layoutPanel')}}"><i class="material-icons">arrow_back</i>Panel de control</a></li>
     <li><div class="divider"></div></li>
     <li><a class="subheader">Opciones</a></li>
     <li><a href="{{url_for('misiones')}}"><i class="material-icons">grade</i>Misiones</a></li>
-    <li><a href="{{url_for('layoutPanel')}}"><i class="material-icons">add_circle</i>Aves</a></li>
+    <li><a href="{{url_for('aves')}}"><i class="material-icons">add_circle</i>Aves</a></li>
 </ul>
 <a href="#" data-target="slide-out" class="sidenav-trigger"><i class="medium material-icons">menu</i></a>
 <!-- Modal Trigger -->
@@ -108,7 +108,7 @@
                                 </a>-->
                                     <i class='material-icons edit' data-idusr='{{ r[0] }}' data-nom='{{ r[1] }}'
                                         data-email='{{ r[2] }}' data-ides='{{ r[3] }}'>create</i>
-                                    <i class="material-icons icon-black delete" data-idusr='{{ r[0] }}'>delete_forever</i>
+                                    <i class="material-icons icon-black delete" data-idusr='{{ r[0] }}' data-email='{{ r[2] }}'>delete_forever</i>
 
                             </td>
                         </tr>
@@ -178,6 +178,7 @@
             <div class="row margin">
                 <div class="input-field col s12 center-align">
                     <input type="hidden" name="idusrEl" id="idusrEl">
+                    <input type="hidden" name="emailEl" id="emailEl">
                     <input type="hidden" name="valor" id="valor">
                         <button class="btn #64dd17 #4dd0e1 cyan lighten-2" id="btnLoguear" name="btnEliminar">
                             <i class="mdi-action-add"></i>Eliminar
@@ -223,9 +224,11 @@
     }); 
     $(document).on("click", '.delete', function(){
         var idusr = $(this).attr("data-idusr");
+        var email = $(this).attr("data-email"); 
         $('.modal').modal(); 
         $('#modalEliminar').modal('open');
         $('#idusrEl').val(idusr);
+        $('#emailEl').val(email);
         $('#valor').val('eliminar');
         /*$.ajax({
             type: "POST",
